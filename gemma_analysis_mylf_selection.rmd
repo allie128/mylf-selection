@@ -44,6 +44,7 @@ Output from gemma run:
 plotting the output from gemma:
 
 ```{r}
+
 #this file already has a chr_num field
 gwas.results <- read.delim("rana_sel_50_filter1_removesites_filter3_all_gemma1.assoc.txt",sep="\t")
 

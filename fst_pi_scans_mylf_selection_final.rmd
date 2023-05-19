@@ -20,6 +20,7 @@ library(qqman)
 Reading in chromosome lengths to help with plotting later on.
 
 ```{r}
+
 #chr lengths
 chr1 <- 404763840+358034480
 chr2 <- 307775840 + 317606836

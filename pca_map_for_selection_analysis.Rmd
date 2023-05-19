@@ -47,6 +47,7 @@ all(colnames(Exome.VCF@gt)[-1] == vcf.meta$Sample)
 Make VCF object a genlight object.  Set populations.
 
 ```{r}
+
 gl.exome <- vcfR2genlight(Exome.VCF)
 ploidy(gl.exome) <- 2
 pop(gl.exome) <- vcf.meta$status
@@ -86,14 +87,13 @@ p
 ```
 
 Now let's plot it on the map
-
+##lat/lon omitted in meta file to protect sensitive species localities##
 
 ```{r}
 nps <- read_sf("./nps_boundary/nps_boundary.shp") %>% st_transform(crs = 4326) 
 
 #sierra_sf <- range_dpac_df %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 #sierra_sf_5 <- range_dpac_df_5 %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
-
 
 state_names <- "california"
 park_names <- c("Kings Canyon", "Sequoia", "Yosemite")
