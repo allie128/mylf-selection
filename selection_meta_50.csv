@@ -1,0 +1,51 @@
+seqID,swabID,siteID,status,latitude,longitude,status_binary,MEAN_DEPTH
+72336_15_S143,72336.15,Unicorn,persistent,omitted,omitted,1,17.2879
+72336_19_S144,72336.19,Unicorn,persistent,omitted,omitted,1,13.1121
+72808_1_S147,72808.1,Unicorn,persistent,omitted,omitted,1,12.1862
+72808_3_S145,72808.3,Unicorn,persistent,omitted,omitted,1,12.0423
+72808_8_S146,72808.8,Unicorn,persistent,omitted,omitted,1,8.41828
+RASI1_S191,RASI1,Hutchings - ZOO,persistent,omitted,omitted,1,13.1047
+RASI2_S192,RASI2,Hutchings - ZOO,persistent,omitted,omitted,1,7.38902
+RASI3_S193,RASI3,Hutchings - ZOO,persistent,omitted,omitted,1,11.5834
+RASI4_S194,RASI4,Hutchings - ZOO,persistent,omitted,omitted,1,8.10626
+RASI5_S195,RASI5,Hutchings - ZOO,persistent,omitted,omitted,1,15.7626
+RKS26100_S100,RKS26100,Swamp Lakes,persistent,omitted,omitted,1,14.7764
+RKS26102_S105,RKS26102,Swamp Lakes,persistent,omitted,omitted,1,24.4136
+RKS26103_S104,RKS26103,Swamp Lakes,persistent,omitted,omitted,1,14.4403
+RKS26108_S103,RKS26108,Swamp Lakes,persistent,omitted,omitted,1,16.8219
+RKS26110_S101,RKS26110,Swamp Lakes,persistent,omitted,omitted,1,11.4778
+RKS26113_S102,RKS26113,Swamp Lakes,persistent,omitted,omitted,1,19.4793
+RKS26631_S119,RKS26631,Gallison,naive,omitted,omitted,0,16.0066
+RKS26632_S122,RKS26632,Gallison,naive,omitted,omitted,0,13.416
+RKS26633_S120,RKS26633,Gallison,naive,omitted,omitted,0,14.5274
+RKS26635_S121,RKS26635,Gallison,naive,omitted,omitted,0,20.6017
+RKS26636_S118,RKS26636,Gallison,naive,omitted,omitted,0,21.5302
+RKS26696_S123,RKS26696,Gallison,naive,omitted,omitted,0,19.9582
+RKS27726_S111,RKS27726,Independence,naive,omitted,omitted,0,23.6097
+RKS27728_S106,RKS27728,Independence,naive,omitted,omitted,0,18.5949
+RKS27733_S110,RKS27733,Independence,naive,omitted,omitted,0,18.7439
+RKS27737_S108,RKS27737,Independence,naive,omitted,omitted,0,14.1983
+RKS27740_S107,RKS27740,Independence,naive,omitted,omitted,0,16.5479
+RKS27741_S109,RKS27741,Independence,naive,omitted,omitted,0,14.9124
+RKS27762_S149,RKS27762,Fourth Recess,naive,omitted,omitted,0,20.2922
+RKS27765_S151,RKS27765,Fourth Recess,naive,omitted,omitted,0,16.7772
+RKS27820_S148,RKS27820,Fourth Recess,naive,omitted,omitted,0,24.3118
+RKS27822_S153,RKS27822,Fourth Recess,naive,omitted,omitted,0,26.0902
+RKS27823_S150,RKS27823,Fourth Recess,naive,omitted,omitted,0,19.3024
+RKS27827_S152,RKS27827,Fourth Recess,naive,omitted,omitted,0,22.2803
+RKS27891_S141,RKS27891,Milestone,persistent,omitted,omitted,1,14.5597
+RKS27895_S137,RKS27895,Milestone,persistent,omitted,omitted,1,19.3293
+RKS27903_S138,RKS27903,Milestone,persistent,omitted,omitted,1,16.5731
+RKS27904_S139,RKS27904,Milestone,persistent,omitted,omitted,1,15.7471
+RKS27906_S140,RKS27906,Milestone,persistent,omitted,omitted,1,16.634
+RKS27920_S131,RKS27920,Kern Point,naive,omitted,omitted,0,16.1448
+RKS27921_S133,RKS27921,Kern Point,naive,omitted,omitted,0,16.9736
+RKS27923_S134,RKS27923,Kern Point,naive,omitted,omitted,0,15.9778
+RKS27924_S130,RKS27924,Kern Point,naive,omitted,omitted,0,18.3984
+RKS27927_S135,RKS27927,Kern Point,naive,omitted,omitted,0,21.6454
+RKS72996_11_S114,RKS72996.11,Conness Pond,persistent,omitted,omitted,1,22.769
+RKS72996_15_S116,RKS72996.15,Conness Pond,persistent,omitted,omitted,1,15.9737
+RKS72996_22_S112,RKS72996.22,Conness Pond,persistent,omitted,omitted,1,13.513
+RKS72996_3_S117,RKS72996.3,Conness Pond,persistent,omitted,omitted,1,13.5481
+RKS72996_5_S113,RKS72996.5,Conness Pond,persistent,omitted,omitted,1,18.5414
+RKS72996_7_S115,RKS72996.7,Conness Pond,persistent,omitted,omitted,1,15.1528

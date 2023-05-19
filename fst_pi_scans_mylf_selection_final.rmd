@@ -1,0 +1,473 @@
+---
+title: "Spline window analysis for MYLF selection"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pegas)
+library(vcfR)
+library(PopGenome)
+library(ggplot2)
+library(tidyverse)
+library(GenWin)
+library(qqman)
+
+```
+
+Reading in chromosome lengths to help with plotting later on.
+
+```{r}
+#chr lengths
+chr1 <- 404763840+358034480
+chr2 <- 307775840 + 317606836
+chr3 <- 307789680+295383052
+chr4 <- 270278320+270222797
+chr5 <- 457393561
+chr6 <- 399741556
+chr7 <- 371426879
+chr8 <- 354355157
+chr9 <- 347625949
+chr10 <- 320079701
+chr11 <- 313114238
+chr12 <- 300254462
+chr13 <- 278422946
+chr14 <- 277457649
+chr15 <- 243715934
+chr16 <- 228514457
+chr17 <- 227279119
+chr18 <- 197480183
+chr19 <- 179372279
+chr20 <- 175654290
+chr21 <- 148532959
+chr22 <- 138952669
+chr23 <- 129099594
+chr24 <- 107283457
+chr25 <- 84067227
+chr26 <- 76928491
+chr27 <- 75132407
+chr28 <- 69399100
+chr29 <- 67327948
+
+#set the colors for naive and persistent
+cols2 <- c("#F8766D","#00BFC4")
+```
+
+
+Here we start with exploring a single contig (chr1) and conducting the splined window analyses. 
+
+First you calculate the chr1 Fst and pi diff by doing the following:
+
+```{bash}
+#for fst
+vcftools --vcf rana_sel_50_filter1_removesites_filter3_noindels.recode.vcf --chr SCMVAOM_226_HRSCAF_953A --chr SCMVAOM_226_HRSCAF_953B --weir-fst-pop naive_samples.txt --weir-fst-pop  persistent_samples.txt --out chr1_Fst
+
+#for pi
+vcftools --vcf rana_sel_50_filter1_removesites_filter3_noindels_naiveonly.vcf --chr SCMVAOM_226_HRSCAF_953A --chr SCMVAOM_226_HRSCAF_953B --site-pi --out chr1_pi_naive 
+
+vcftools --vcf rana_sel_50_filter1_removesites_filter3_noindels_persistentonly.vcf --chr SCMVAOM_226_HRSCAF_953A --chr SCMVAOM_226_HRSCAF_953B --site-pi --out chr1_pi_persistent
+
+```
+
+After completing these calculations with vcftools I had to manually adjust some things for chr1 because we had to split the original chromosome before alignment. So now we put the two split chromosomes back together by adding the length of SCMVAOM_226_HRSCAF_953A (358034480) to the POS values for SCMVAOM_226_HRSCAF_953B.
+
+Then I calculated difference in pi for persistent and naive (pi_diff = pi_naive - pi_persistent) pops by combining the two output files and calculating this value using excel. This allowed me to make sure the POS values match exactly for each value (which is sometimes not the case). I then saved this resulting file as "chr1_pi_diff.sites.txt"
+
+```{r}
+##let's start with chromosome 1 and the pi stat
+
+#let's try using the pi_diff for chr1
+pi_diff <- read_tsv("chr1_pi_diff.sites.txt")
+
+#perform spline smoothing and window analysis
+pi_diff_spline <- splineAnalyze(Y=pi_diff$abs_diff,map=pi_diff$POS, smoothness = 100,plotRaw=F, plotWindows=F, method=4)
+
+#plot the splined pi_diff with outliers
+plot(pi_diff_spline$windowData$Wstat ~ pi_diff_spline$windowData$WindowStart)
+abline(v=50320590, col="gray")
+abline(v=50322303, col="gray")
+abline(v=175568986, col="gray")
+abline(v=175574519, col="gray")
+abline(v=175579538, col="gray")
+abline(v=466129356, col="gray")
+abline(v=466129372, col="gray")
+
+d_pi_diff <- density(na.omit(pi_diff_spline$windowData$Wstat))
+plot(d_pi_diff)
+#calculate sig threshold
+pi_diff_spline_cutoff <- sd(na.omit(pi_diff_spline$windowData$Wstat))*4
+
+#see which windows are above threshold and pull them out as outliers
+outliers_pi_diff <- pi_diff_spline$windowData[which((pi_diff_spline$windowData$Wstat)>pi_diff_spline_cutoff),]
+
+#now let's compare to Fst
+
+#read in raw Fst per site calculated with vcftools
+fst_sites <- read_tsv("chr1_Fst.weir.fst")
+
+#perform spline smoothing and window analysis
+fst_spline <- splineAnalyze(Y=fst_sites$WEIR_AND_COCKERHAM_FST,map=fst_sites$POS, smoothness = 100,plotRaw=F, plotWindows=F, method=4)
+
+#plot the splined Fst with outliers
+plot(fst_spline$windowData$Wstat ~ fst_spline$windowData$WindowStart)
+abline(v=50320590, col="gray")
+abline(v=50322303, col="gray")
+abline(v=175568986, col="gray")
+abline(v=175574519, col="gray")
+abline(v=175579538, col="gray")
+abline(v=466129356, col="gray")
+abline(v=466129372, col="gray")
+
+#look at the fst distribution
+d_fst <- density(na.omit(fst_spline$windowData$Wstat))
+plot(d_fst)
+#identify outliers
+fst_spline_cutoff <- sd(na.omit(fst_spline$windowData$Wstat))*4
+
+outliers_fst <- fst_spline$windowData[which((fst_spline$windowData$Wstat)>fst_spline_cutoff),]
+
+#for chr1 it looks like there is one overlapping pi_diff and fst outlier. Let's add it to the plot.
+
+plot(fst_spline$windowData$Wstat ~ fst_spline$windowData$WindowStart)
+abline(v=50320590, col="gray")
+abline(v=50322303, col="gray")
+abline(v=175568986, col="gray")
+abline(v=175574519, col="gray")
+abline(v=175579538, col="gray")
+abline(v=466129356, col="gray")
+abline(v=466129372, col="gray")
+
+abline(v=outliers_pi_diff$WindowStart[1], col="blue")
+
+plot(pi_diff_spline$windowData$Wstat ~ pi_diff_spline$windowData$WindowStart)
+abline(v=50320590, col="gray")
+abline(v=50322303, col="gray")
+abline(v=175568986, col="gray")
+abline(v=175574519, col="gray")
+abline(v=175579538, col="gray")
+abline(v=466129356, col="gray")
+abline(v=466129372, col="gray")
+
+abline(v=outliers_pi_diff$WindowStart[1], col="blue")
+
+#write it out if you want to keep outliers file
+#write.csv(outliers_fst, file="chr1_outliers_fst.csv")
+#write.csv(outliers_pi_diff, file="chr1_outliers_pi_diff.csv")
+
+#explore the color plot for pi differences
+
+#perform spline smoothing and window analysis
+pi_p_spline <- splineAnalyze(Y=pi_diff$PI_p,map=pi_diff$POS, smoothness = 100,plotRaw=F, plotWindows=F, method=4)
+
+pi_n_spline <- splineAnalyze(Y=pi_diff$PI_n,map=pi_diff$POS, smoothness = 100,plotRaw=F, plotWindows=F, method=4)
+
+#plot the naive data
+plot(pi_n_spline$windowData$Wstat ~ pi_n_spline$windowData$WindowStart, ylim=c(-10,10), col=cols2[1])
+#add the persistent data on top
+points(y=pi_p_spline$windowData$Wstat, x=pi_p_spline$windowData$WindowStart, col=cols2[2])
+#add the location of the pi diff outliers
+abline(v=157365150, col="gray")
+abline(v=285312950, col="gray")
+abline(v=402000350, col="gray")
+abline(v=426013250, col="gray")
+abline(v=544949250, col="gray")
+
+abline(v=outliers_pi_diff$WindowStart[1], col="blue")
+
+
+```
+
+
+Now let's get into the calculations for the concatenated file that includes chr 1-30 concatenated in order (sorted by length largest to smallest). To create this concatenated file I calculated Fst and pi_diff as described above separately for each of the 30 largetst contigs, then concatenated the size-sorted fst values into one file and adjusted the POSITION based on the cumulative position in sorted genome.
+
+
+```{r}
+
+#now let's look at the concatenated set of chr1-30
+#read in raw Fst per site calculated with vcftools
+fst_sites <- read_tsv("chr1to30_cat_Fst.weir.fst")
+
+#perform spline smoothing and window analysis
+#takes a minute to run
+fst_spline <- splineAnalyze(Y=fst_sites$WEIR_AND_COCKERHAM_FST,map=fst_sites$POS_CAT, smoothness = 100,plotRaw=F, plotWindows=F, method=4)
+
+#look at the fst spline distribution
+d_fst <- density(na.omit(fst_spline$windowData$Wstat))
+plot(d_fst)
+
+#identify outliers
+fst_spline_cutoff <- mean(na.omit(fst_spline$windowData$Wstat)) + sd(na.omit(fst_spline$windowData$Wstat))*4
+
+#plot the splined Fst with outliers
+plot(fst_spline$windowData$Wstat ~ fst_spline$windowData$WindowStart)
+abline(h=fst_spline_cutoff, col="#DC3220")
+
+#pull out outliers who have Wstat greater than the cutoff
+outliers_fst <- fst_spline$windowData[which((fst_spline$windowData$Wstat)>fst_spline_cutoff),]
+
+#plot outliers in green and put blue vertical lines where the SNP outliers are
+points(x=outliers_fst$WindowStart, y=outliers_fst$Wstat, col="green")
+abline(v=outliers_fst$WindowStart[4], col="blue")
+abline(v=outliers_fst$WindowStart[14], col="blue")
+abline(v=outliers_fst$WindowStart[21], col="blue")
+abline(v=outliers_fst$WindowStart[24], col="blue")
+abline(v=outliers_fst$WindowStart[36], col="blue")
+abline(v=outliers_fst$WindowStart[38], col="blue")
+abline(v=outliers_fst$WindowStart[42], col="blue")
+abline(v=outliers_fst$WindowStart[44], col="blue")
+abline(v=outliers_fst$WindowStart[48], col="blue")
+
+##now let's try for pi_diff
+
+#read in pi_diff
+pi_sites <- read_tsv("chr1to30_pi_diff_cat.txt")
+
+#perform spline smoothing and window analysis
+#takes a minute to run
+pi_spline <- splineAnalyze(Y=pi_sites$diff,map=pi_sites$POS_CAT, smoothness = 100,plotRaw=F, plotWindows=F, method=4)
+
+#look at the pi_diff distribution
+d_pi <- density(na.omit(pi_spline$windowData$Wstat))
+plot(d_pi)
+#identify outliers
+pi_spline_cutoff_pos <- mean(na.omit(pi_spline$windowData$Wstat)) + sd(na.omit(pi_spline$windowData$Wstat))*4
+
+pi_spline_cutoff_neg <- mean(na.omit(pi_spline$windowData$Wstat)) - sd(na.omit(pi_spline$windowData$Wstat))*4
+
+#get a combined set of positive and negative outliers 
+outliers_pi_pos <- pi_spline$windowData[which((pi_spline$windowData$Wstat)>pi_spline_cutoff_pos),]
+outliers_pi_neg <- pi_spline$windowData[which((pi_spline$windowData$Wstat)<(pi_spline_cutoff_neg)),]
+outliers_pi <- rbind(outliers_pi_pos, outliers_pi_neg)
+
+#plot the splined pi_diff with outliers
+plot(pi_spline$windowData$Wstat ~ pi_spline$windowData$WindowStart)
+abline(h=pi_spline_cutoff_pos, col="#DC3220")
+abline(h=(pi_spline_cutoff_neg), col="#DC3220")
+points(x=outliers_pi_pos$WindowStart, y=outliers_pi_pos$Wstat, col="green")
+points(x=outliers_pi_neg$WindowStart, y=outliers_pi_neg$Wstat, col="green")
+
+abline(v=outliers_pi_neg$WindowStart[3], col="blue")
+abline(v=outliers_pi_pos$WindowStart[8], col="blue")
+abline(v=outliers_pi_neg$WindowStart[20], col="blue")
+
+#write.csv(outliers_fst, file="outliers_fst_mean_sd4.csv")
+#write.csv(outliers_pi, file="outliers_pi_diff_mean_sd4.csv")
+
+
+```
+
+Code for making a nice manhattan plots for the paper
+
+```{r}
+
+fst_spline_windows <- fst_spline$windowData
+fst_spline_windows <-mutate(fst_spline_windows, chr=NA)
+
+#adds in the chr number to the windows data
+for (i in 1:nrow(fst_spline_windows)){
+if (fst_spline_windows$WindowStop[i] < chr1){
+    fst_spline_windows$chr[i] <- 1
+  } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2)){
+    fst_spline_windows$chr[i] <- 2
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3)){
+    fst_spline_windows$chr[i] <- 3
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4)){
+     fst_spline_windows$chr[i] <- 4
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5)){
+    fst_spline_windows$chr[i] <- 5
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6)){
+      fst_spline_windows$chr[i] <- 6
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7)){
+      fst_spline_windows$chr[i] <- 7
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8)){
+      fst_spline_windows$chr[i] <- 8
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9)){
+      fst_spline_windows$chr[i] <- 9
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10)){
+      fst_spline_windows$chr[i] <- 10
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11)){
+      fst_spline_windows$chr[i] <- 11
+    }  else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12)){
+      fst_spline_windows$chr[i] <- 12
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13)){
+      fst_spline_windows$chr[i] <- 13
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14)){
+      fst_spline_windows$chr[i] <- 14
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15)){
+      fst_spline_windows$chr[i] <- 15
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16)){
+      fst_spline_windows$chr[i] <- 16
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17)){
+      fst_spline_windows$chr[i] <- 17
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18)){
+      fst_spline_windows$chr[i] <- 18
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19)){
+      fst_spline_windows$chr[i] <- 19
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20)){
+      fst_spline_windows$chr[i] <- 20
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21)){
+      fst_spline_windows$chr[i] <- 21
+    } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22)){
+      fst_spline_windows$chr[i] <- 22
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23)){
+      fst_spline_windows$chr[i] <- 23
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24)){
+      fst_spline_windows$chr[i] <- 24
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25)){
+      fst_spline_windows$chr[i] <- 25
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26)){
+      fst_spline_windows$chr[i] <- 26
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27)){
+      fst_spline_windows$chr[i] <- 27
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27+chr28)){
+      fst_spline_windows$chr[i] <- 28
+   } else if (fst_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27+chr28+chr29)){
+      fst_spline_windows$chr[i] <- 29
+   } else if (fst_spline_windows$WindowStop[i] > (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27+chr28+chr29)){
+      fst_spline_windows$chr[i] <- 30
+  } }  
+
+#prepare the axis 
+axisdf = fst_spline_windows %>% group_by(chr) %>% summarize(center=( max(WindowStop) + min(WindowStart) ) / 2 )
+
+#now plot with ggplot
+p1 <- ggplot(fst_spline_windows, aes(x=WindowStart, y=Wstat)) +
+    #Show all points
+    geom_point(aes(color=as.factor(chr)), alpha=0.8, size=1.3) +
+    scale_color_manual(values = rep(c("gray10","gray60"), 30 )) +
+    # custom X axis:
+    scale_x_continuous( label = axisdf$chr, breaks= axisdf$center ) +
+    scale_y_continuous(expand = c(0.2, 0.2) ) + 
+  #add outlier cutoff
+  geom_hline(yintercept=fst_spline_cutoff, linetype="dashed", color = "#DC3220")+
+     # Customize the theme:
+    theme_bw() +
+    theme( 
+      legend.position="none",
+      panel.border = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
+
+#add in outliers and shared outliers with pi 
+outliers_fst_shared <- outliers_fst[c(4,14,21,24,36,46,50,54,55),]
+outliers_pi_shared <- rbind(outliers_pi_pos[c(1,3,4,7,8),],outliers_pi_neg[c(3,16,20,22,23),])
+
+
+#for chr8 Fst
+p1 + xlim(c((chr1+chr2+chr3+chr4+chr5+chr6+chr7),(chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8)))+ 
+  geom_point(data=fst_spline_windows[7862:8774,],aes(x=WindowStart,y=Wstat),color="gray60", size=3) +
+  geom_point(data=outliers_fst,aes(x=WindowStart,y=Wstat),color="#005AB5",size=3) +
+  geom_point(data=outliers_fst_shared,aes(x=WindowStart,y=Wstat),color="#DC3220",size=3)+
+  geom_vline(xintercept = (70004571+(chr1+chr2+chr3+chr4+chr5+chr6+chr7)),linetype="dashed", color = "blue")+
+  geom_vline(xintercept =(70406702+(chr1+chr2+chr3+chr4+chr5+chr6+chr7)),linetype="dashed", color = "blue")
+
+#####now for the pi manhattan
+
+pi_spline_windows <- pi_spline$windowData
+pi_spline_windows <-mutate(pi_spline_windows, chr=NA)
+
+#adds in the chr number to the windows data
+for (i in 1:nrow(pi_spline_windows)){
+if (pi_spline_windows$WindowStop[i] < chr1){
+    pi_spline_windows$chr[i] <- 1
+  } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2)){
+    pi_spline_windows$chr[i] <- 2
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3)){
+    pi_spline_windows$chr[i] <- 3
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4)){
+     pi_spline_windows$chr[i] <- 4
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5)){
+    pi_spline_windows$chr[i] <- 5
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6)){
+      pi_spline_windows$chr[i] <- 6
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7)){
+      pi_spline_windows$chr[i] <- 7
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8)){
+      pi_spline_windows$chr[i] <- 8
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9)){
+      pi_spline_windows$chr[i] <- 9
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10)){
+      pi_spline_windows$chr[i] <- 10
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11)){
+      pi_spline_windows$chr[i] <- 11
+    }  else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12)){
+      pi_spline_windows$chr[i] <- 12
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13)){
+      pi_spline_windows$chr[i] <- 13
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14)){
+      pi_spline_windows$chr[i] <- 14
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15)){
+      pi_spline_windows$chr[i] <- 15
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16)){
+      pi_spline_windows$chr[i] <- 16
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17)){
+      pi_spline_windows$chr[i] <- 17
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18)){
+      pi_spline_windows$chr[i] <- 18
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19)){
+      pi_spline_windows$chr[i] <- 19
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20)){
+      pi_spline_windows$chr[i] <- 20
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21)){
+      pi_spline_windows$chr[i] <- 21
+    } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22)){
+      pi_spline_windows$chr[i] <- 22
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23)){
+      pi_spline_windows$chr[i] <- 23
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24)){
+      pi_spline_windows$chr[i] <- 24
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25)){
+      pi_spline_windows$chr[i] <- 25
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26)){
+      pi_spline_windows$chr[i] <- 26
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27)){
+      pi_spline_windows$chr[i] <- 27
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27+chr28)){
+      pi_spline_windows$chr[i] <- 28
+   } else if (pi_spline_windows$WindowStop[i] < (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27+chr28+chr29)){
+      pi_spline_windows$chr[i] <- 29
+   } else if (pi_spline_windows$WindowStop[i] > (chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19+chr20+chr21+chr22+chr23+chr24+chr25+chr26+chr27+chr28+chr29)){
+      pi_spline_windows$chr[i] <- 30
+   } }  
+
+#now plot with ggplot
+p2 <- ggplot(pi_spline_windows, aes(x=WindowStart, y=Wstat)) +
+    # Show all points
+    geom_point(aes(color=as.factor(chr)), alpha=0.8, size=1.3) +
+    scale_color_manual(values = rep(c("gray10","gray60"), 30 )) +
+    # custom X axis:
+    scale_x_continuous( label = axisdf$chr, breaks= axisdf$center ) +
+    scale_y_continuous(expand = c(0.1, 0.1) ) +
+  #add outlier cutoff
+  geom_hline(yintercept=pi_spline_cutoff_pos, linetype="dashed", color = "#DC3220")+
+  geom_hline(yintercept=(pi_spline_cutoff_neg), linetype="dashed", color = "#DC3220")+
+     # Customize the theme:
+    theme_bw() +
+    theme( 
+      legend.position="none",
+      panel.border = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
+
+#FOR FINAL PI MANHATTAN
+p2 + geom_point(aes(color=as.factor(chr)), size=3) + geom_point(data=outliers_pi_neg,aes(x=WindowStart,y=Wstat),color="#005AB5", size=3) +
+  geom_point(data=outliers_pi_pos,aes(x=WindowStart,y=Wstat),color="#005AB5", size=3) +
+  geom_point(data=outliers_pi_shared,aes(x=WindowStart,y=Wstat),color="#DC3220", size=3)  
+
+#for chr19 zoom
+
+#x axis limits for chr19
+chr19_xlim <- c((chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18),(chr1+chr2+chr3+chr4+chr5+chr6+chr7+chr8+chr9+chr10+chr11+chr12+chr13+chr14+chr15+chr16+chr17+chr18+chr19))
+
+#now plot
+p2 + xlim(chr19_xlim)+ geom_point(aes(color=as.factor(chr)), size=3) + geom_point(data=outliers_pi_neg,aes(x=WindowStart,y=Wstat),color="#005AB5", size=3) +
+  geom_point(data=outliers_pi_pos,aes(x=WindowStart,y=Wstat),color="#005AB5", size=3) +
+  geom_point(data=outliers_pi_shared,aes(x=WindowStart,y=Wstat),color="#DC3220", size=3) +  geom_vline(xintercept = (166637599+chr19_xlim[1]),linetype="dashed", color = "blue") +
+  geom_point(data=pi_spline_windows[11126,],aes(x=WindowStart,y=Wstat),color="white", size=3) 
+
+```
+

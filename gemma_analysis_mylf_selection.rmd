@@ -1,0 +1,83 @@
+---
+title: "GEMMA analysis for MYLF selection"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(qqman)
+```
+
+Command for running gemma:
+(files found in gemma_input folder)
+
+```{bash}
+#first calculate relatedness matrix
+gemma -bfile rana_sel_50_filter1_removesites_filter3_all -gk 1 -o rana_sel_50_filter1_removesites_filter3_all_relate -miss 0.05
+
+#then run gemma lmm
+gemma -bfile rana_sel_50_filter1_removesites_filter3_all -k /global/scratch/users/allie128/rana/selection_analyses/output/rana_sel_50_filter1_removesites_filter3_all_relate.cXX.txt -lmm 4 -o rana_sel_50_filter1_removesites_filter3_all_gemma1 
+```
+
+Output from gemma run:
+
+## Summary Statistics:
+## number of total individuals = 50
+## number of analyzed individuals = 50
+## number of covariates = 1
+## number of phenotypes = 1
+## number of total SNPs/var = 427038
+## number of analyzed SNPs/var = 148307
+## REMLE log-likelihood in the null model = 9.57529
+## MLE log-likelihood in the null model = 15.0378
+## pve estimate in the null model = 0.999976
+## se(pve) in the null model = 0.000356435
+## vg estimate in the null model = 0.28946
+## ve estimate in the null model = 2.8946e-06
+## beta estimate in the null model =   0.54
+## se(beta) =   0.000240608
+
+
+plotting the output from gemma:
+
+```{r}
+#this file already has a chr_num field
+gwas.results <- read.delim("rana_sel_50_filter1_removesites_filter3_all_gemma1.assoc.txt",sep="\t")
+
+#add in SNP field 
+gwas.results <- mutate(gwas.results, snp = paste(chr,ps,sep=":"))
+
+#check col names
+colnames(gwas.results)
+
+#calculate significance level
+nb_snps <- dim(gwas.results)[[1]]
+
+## Calculate Bonferroni corrected P-value thresholds
+#set strict threshold
+bonferroni_threshold_01 <- 0.01/nb_snps
+threshold_pvalue_01 <- bonferroni_threshold_01
+
+#set liberal threshold
+bonferroni_threshold_05 <- 0.05/nb_snps
+threshold_pvalue_05 <- bonferroni_threshold_05
+
+#make qqplot
+#final plot for Figure 6B
+qq(gwas.results$p_lrt) 
+abline(h=-log10(threshold_pvalue_01), lty="dashed")
+
+outliers <- gwas.results$snp[which(gwas.results$p_lrt<threshold_pvalue_01)]    
+
+outliers
+
+#final plot for Figure 6C
+manhattan(gwas.results, chr="chr_num_sorted", bp="ps_fix", p="p_lrt", snp="snp",genomewideline = -log10(threshold_pvalue_01), highlight = outliers, suggestiveline = F)
+          
+
+
+```
+

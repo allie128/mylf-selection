@@ -1,0 +1,153 @@
+---
+title: "PCA and map for MYLF selection analysis"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Once you have a VCF you can read it in and make it a genlight object.  Follow that with making a PCA.  You will need meta data for each sample (sample name and population)
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(vcfR)
+library(ggplot2)
+library(adegenet)
+library(poppr)
+library(RColorBrewer)
+library(ggrepel)
+library(ggsignif)
+library(vegan)
+library(sp)
+library(sf)
+library(USAboundaries)
+library(rnaturalearth)
+```
+
+read in VCF and match to metadata table.
+
+```{r}
+
+#read in vcf
+Exome.VCF <- read.vcfR("rana_sel_50_filter1_removesites_filter3_noindels.recode.vcf")
+
+#read in file with sample metadata
+Exome.meta <- read.csv("selection_meta_50.csv", header = T)
+colnames(Exome.meta)[1] <- "name"
+#join in a meta table based on sample ID
+colnames(Exome.VCF@gt)[-1] -> vcf.names
+as.data.frame(vcf.names) -> vcf.names
+colnames(vcf.names) <- "name"
+left_join(vcf.names, Exome.meta, by = "name") -> vcf.meta
+
+#check
+all(colnames(Exome.VCF@gt)[-1] == vcf.meta$Sample)
+
+```
+
+Make VCF object a genlight object.  Set populations.
+
+```{r}
+gl.exome <- vcfR2genlight(Exome.VCF)
+ploidy(gl.exome) <- 2
+pop(gl.exome) <- vcf.meta$status
+
+#get summary of data
+gl.exome
+
+```
+
+Now we make a PCA
+
+```{r}
+
+pca <- glPca(gl.exome, nf = 3)
+barplot(100*pca$eig/sum(pca$eig), col = heat.colors(50), main="PCA Eigenvalues")
+title(ylab="Percent of variance\nexplained", line = 2)
+title(xlab="Eigenvalues", line = 1)
+
+pca.scores <- as.data.frame(pca$scores)
+
+cols <- brewer.pal(n_distinct(assign1$value), "Set1")
+
+
+p <- ggplot(pca.scores, aes(x=PC2, y=PC1, colour=as.factor(vcf.meta$status))) + 
+  geom_point(size=5, alpha = 0.6 ) + 
+  #scale_color_manual(values = c("dark grey",cols[2],cols[1])) + 
+  #scale_shape_manual(values = c(15, 16, 17)) +
+  #stat_ellipse(aes(x=PC2, y=PC1, group=as.factor(assign1$value)),level = 0.95, size = 1) + 
+  #geom_label_repel(aes(label = vcf.meta$New_Sample_ID), size = 3)+
+  #geom_hline(yintercept = 0) + 
+  #geom_vline(xintercept = 0) +
+  theme_bw()
+
+#PCA 
+p
+
+```
+
+Now let's plot it on the map
+
+
+```{r}
+nps <- read_sf("./nps_boundary/nps_boundary.shp") %>% st_transform(crs = 4326) 
+
+#sierra_sf <- range_dpac_df %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+#sierra_sf_5 <- range_dpac_df_5 %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
+
+state_names <- "california"
+park_names <- c("Kings Canyon", "Sequoia", "Yosemite")
+
+parks <- nps %>% filter(PARKNAME %in% park_names) %>% 
+  mutate(lon=map_dbl(geometry, ~st_centroid(.x)[[1]]),
+         lat=map_dbl(geometry, ~st_centroid(.x)[[2]]))
+
+CA_NV <-us_states(resolution = "high", states = state_names) %>%
+  st_transform(crs = 4326)
+CA_NV <- st_as_sf(CA_NV)
+
+sf_species_range <- st_read("./spatial/mylf_boundary_knapp/mylf_boundary_final.shp")
+colnames(sf_species_range)[2] <- "name"
+species_range <- as_Spatial(sf_species_range)
+species_range <- spTransform(species_range, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84"))
+
+#convert shapes to spatial polygons
+CA_NV_sp <- as_Spatial(CA_NV)
+parks_sp <- as_Spatial(parks)
+
+
+cols2 <- c("#F8766D","#00BFC4")
+
+#plot base map range and scale
+maps::map(database=species_range, xlim = range(vcf.meta$lon) + c(-1,1), ylim = range(vcf.meta$lat)+c(-.5,.5), col="light gray", fill=T, mar=c(2,1,1,1))
+maps::map(database=CA_NV_sp, col="gray", add=T)
+maps::map(database=parks_sp, col="dark gray", add=T, fill=T)
+maps::map.scale(relwidth = 0.15, metric = TRUE, ratio = F, cex=0.5)
+#add the points to the map and color based on DAPC assignment.
+points(x = vcf.meta$longitude, y = vcf.meta$latitude, col =cols2[as.factor(vcf.meta$status_binary)], pch=19, cex=1.5)
+
+#for insert
+#plot base map range and scale
+maps::map(database=CA_NV_sp, col="black")
+maps::map(database=species_range, col="light gray", fill=T,add=T)
+maps::map(database=parks_sp, col="dark gray", add=T, fill=T)
+#maps::map.scale(relwidth = 0.15, metric = TRUE, ratio = F, cex=0.5)
+#add the points to the map and color based on DAPC assignment.
+points(x = vcf.meta$longitude, y = vcf.meta$latitude, col =cols2[as.factor(vcf.meta$status_binary)], pch=19, cex=.5)
+
+```
+
+Test map
+
+```{r}
+
+
+#plot base map range and scale
+maps::map(database=CA_NV_sp, col="black")
+maps::map(database=species_range, col="light gray", fill=T,add=T)
+maps::map(database=parks_sp, col="dark gray", add=T, fill=T)
+
+points(y = c(34.1431992,34.3545116,37.3047,37.851102,37.90317), x =c(-117.0677172,-117.856104,-119.1251,-119.65861,-119.44083), col ="red", pch=19, cex=.5)
+
+```
+
