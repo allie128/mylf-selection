@@ -24,6 +24,8 @@ library(rnaturalearth)
 ```
 
 read in VCF and match to metadata table.
+##note that the vcf is too large to store on github##
+##the vcf file is now available on dryad here:https://doi.org/10.6078/D1N141 ##
 
 ```{r}
 
